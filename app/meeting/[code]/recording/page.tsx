@@ -299,7 +299,7 @@ export default function RecordingPage() {
         isRecording={isRecording}
       />
 
-      <MessagesWaterfall roomCode={code} myWallet={myWallet} />
+      <MessagesWaterfall roomCode={code} myWallet={myWallet} participants={participants} />
 
       <div className="flex-shrink-0 px-4 py-4 border-t border-gray-800 flex justify-center">
         <button
