@@ -1,8 +1,10 @@
 'use client'
 
 import { useWriteContract, useReadContract, useWaitForTransactionReceipt } from 'wagmi'
-import { keccak256, encodePacked } from 'viem'
+import { keccak256, encodePacked, concat, toBytes } from 'viem'
 import { TRISIGN_CONTRACT_ADDRESS, triSignAbi } from './contract-abi'
+
+// ── hash helpers ──────────────────────────────────────────────────────────────
 
 /** Build the meetingId bytes32 from a UUID string */
 export function buildMeetingId(meetingUuid: string): `0x${string}` {
@@ -30,56 +32,52 @@ export function buildDisputesRoot(
   return keccak256(encodePacked(hashes.map(() => 'bytes32' as const), hashes))
 }
 
-/** The message each participant signs for submitConsensus */
+/**
+ * The message each participant signs for submitConsensusSignature.
+ * Must match Solidity: keccak256(abi.encodePacked("TriSign End: ", meetingId, finalRoot, disputesRoot))
+ * Returned as the raw (pre-eth_sign-prefix) hex so the caller can pass it to signMessage.
+ */
 export function buildConsensusMessage(
   meetingId: `0x${string}`,
   finalMessagesRoot: `0x${string}`,
   disputesRoot: `0x${string}`
-): string {
-  return `TriSign Consensus: meetingId=${meetingId} finalRoot=${finalMessagesRoot} disputesRoot=${disputesRoot}`
+): `0x${string}` {
+  return keccak256(
+    concat([
+      toBytes('TriSign End: '),
+      toBytes(meetingId),
+      toBytes(finalMessagesRoot),
+      toBytes(disputesRoot),
+    ])
+  )
 }
 
-/** Hook: call startMeeting on-chain */
-export function useStartMeeting() {
+// ── wagmi hooks ───────────────────────────────────────────────────────────────
+
+/**
+ * Hook: each participant calls submitConsensusSignature with their own wallet.
+ * Gas is paid individually.
+ */
+export function useSubmitConsensusSignature() {
   const { writeContract, data: hash, isPending, error } = useWriteContract()
   const { isLoading: isConfirming, isSuccess } = useWaitForTransactionReceipt({ hash })
 
-  function startMeeting(
+  function submitSignature(
     meetingId: `0x${string}`,
-    roomCodeHash: `0x${string}`,
-    participants: [`0x${string}`, `0x${string}`, `0x${string}`]
-  ) {
-    writeContract({
-      address: TRISIGN_CONTRACT_ADDRESS,
-      abi: triSignAbi,
-      functionName: 'startMeeting',
-      args: [meetingId, roomCodeHash, participants],
-    })
-  }
-
-  return { startMeeting, hash, isPending, isConfirming, isSuccess, error }
-}
-
-/** Hook: call submitConsensus on-chain (host pays gas) */
-export function useSubmitConsensus() {
-  const { writeContract, data: hash, isPending, error } = useWriteContract()
-  const { isLoading: isConfirming, isSuccess } = useWaitForTransactionReceipt({ hash })
-
-  function submitConsensus(
-    meetingId: `0x${string}`,
+    participants: [`0x${string}`, `0x${string}`, `0x${string}`],
     finalMessagesRoot: `0x${string}`,
     disputesRoot: `0x${string}`,
-    sigs: [`0x${string}`, `0x${string}`, `0x${string}`]
+    signature: `0x${string}`
   ) {
     writeContract({
       address: TRISIGN_CONTRACT_ADDRESS,
       abi: triSignAbi,
-      functionName: 'submitConsensus',
-      args: [meetingId, finalMessagesRoot, disputesRoot, sigs],
+      functionName: 'submitConsensusSignature',
+      args: [meetingId, participants, finalMessagesRoot, disputesRoot, signature],
     })
   }
 
-  return { submitConsensus, hash, isPending, isConfirming, isSuccess, error }
+  return { submitSignature, hash, isPending, isConfirming, isSuccess, error }
 }
 
 /** Hook: read verifyMeeting from chain */

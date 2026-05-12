@@ -7,7 +7,6 @@ import {TriSign} from "../src/TriSign.sol";
 contract TriSignTest is Test {
     TriSign public trisign;
 
-    // Deterministic test private keys
     uint256 internal constant PK_A = 0xA11CE;
     uint256 internal constant PK_B = 0xB0B;
     uint256 internal constant PK_C = 0xC0DE;
@@ -17,7 +16,6 @@ contract TriSignTest is Test {
     address internal addrC;
 
     bytes32 internal constant MEETING_ID = keccak256("meeting-001");
-    bytes32 internal constant ROOM_CODE_HASH = keccak256("123456");
     bytes32 internal constant FINAL_ROOT = keccak256("messages-root");
     bytes32 internal constant DISPUTES_ROOT = keccak256("disputes-root");
 
@@ -30,140 +28,154 @@ contract TriSignTest is Test {
 
     // ── helpers ───────────────────────────────────────────────────────────────
 
-    function _participants() internal view returns (address[3] memory) {
-        return [addrA, addrB, addrC];
-    }
-
-    function _makeConsensusHash(bytes32 meetingId, bytes32 finalRoot, bytes32 disputesRoot)
+    function _ethSignedHash(bytes32 meetingId, bytes32 finalRoot, bytes32 disputesRoot)
         internal
         pure
         returns (bytes32)
     {
-        bytes32 msgHash = keccak256(abi.encodePacked(meetingId, finalRoot, disputesRoot));
-        return keccak256(abi.encodePacked("\x19Ethereum Signed Message:\n32", msgHash));
+        bytes32 raw = keccak256(
+            abi.encodePacked("TriSign End: ", meetingId, finalRoot, disputesRoot)
+        );
+        return keccak256(abi.encodePacked("\x19Ethereum Signed Message:\n32", raw));
     }
 
-    function _signConsensus(uint256 pk, bytes32 meetingId, bytes32 finalRoot, bytes32 disputesRoot)
+    function _sign(uint256 pk, bytes32 meetingId, bytes32 finalRoot, bytes32 disputesRoot)
         internal
-        view
+        pure
         returns (bytes memory)
     {
-        bytes32 ethHash = _makeConsensusHash(meetingId, finalRoot, disputesRoot);
-        (uint8 v, bytes32 r, bytes32 s) = vm.sign(pk, ethHash);
+        bytes32 h = _ethSignedHash(meetingId, finalRoot, disputesRoot);
+        (uint8 v, bytes32 r, bytes32 s) = vm.sign(pk, h);
         return abi.encodePacked(r, s, v);
     }
 
-    function _startMeeting() internal {
-        trisign.startMeeting(MEETING_ID, ROOM_CODE_HASH, _participants());
+    function _submitAs(uint256 pk, address caller) internal {
+        vm.prank(caller);
+        trisign.submitConsensusSignature(
+            MEETING_ID,
+            [addrA, addrB, addrC],
+            FINAL_ROOT,
+            DISPUTES_ROOT,
+            _sign(pk, MEETING_ID, FINAL_ROOT, DISPUTES_ROOT)
+        );
     }
 
-    function _submitConsensus() internal {
-        bytes[3] memory sigs = [
-            _signConsensus(PK_A, MEETING_ID, FINAL_ROOT, DISPUTES_ROOT),
-            _signConsensus(PK_B, MEETING_ID, FINAL_ROOT, DISPUTES_ROOT),
-            _signConsensus(PK_C, MEETING_ID, FINAL_ROOT, DISPUTES_ROOT)
-        ];
-        trisign.submitConsensus(MEETING_ID, FINAL_ROOT, DISPUTES_ROOT, sigs);
+    // ── test 1: first signer sets participants; meeting not sealed yet ─────────
+
+    function test_firstSignature_pendingState() public {
+        _submitAs(PK_A, addrA);
+
+        TriSign.Meeting memory m = trisign.getMeeting(MEETING_ID);
+        assertEq(m.signedCount, 1);
+        assertFalse(m.isSealed);
+        assertEq(m.endSigs[0].signer, addrA);
     }
 
-    // ── test 1: startMeeting stores participants and emits event ──────────────
+    // ── test 2: all three sign → meeting sealed ───────────────────────────────
 
-    function test_startMeeting_success() public {
-        vm.expectEmit(true, false, false, false);
-        emit TriSign.MeetingStarted(MEETING_ID, _participants(), block.timestamp);
+    function test_allThreeSigns_sealsmeeting() public {
+        _submitAs(PK_A, addrA);
+        _submitAs(PK_B, addrB);
+        _submitAs(PK_C, addrC);
 
-        _startMeeting();
-
-        (, address[3] memory parts,,,,bool isStarted,) = trisign.getMeeting(MEETING_ID);
-        assertTrue(isStarted);
-        assertEq(parts[0], addrA);
-        assertEq(parts[1], addrB);
-        assertEq(parts[2], addrC);
+        TriSign.Meeting memory m = trisign.getMeeting(MEETING_ID);
+        assertTrue(m.isSealed);
+        assertEq(m.signedCount, 3);
+        assertGt(m.sealedAt, 0);
     }
 
-    // ── test 2: startMeeting reverts on duplicate ─────────────────────────────
-
-    function test_startMeeting_revert_alreadyStarted() public {
-        _startMeeting();
-        vm.expectRevert(TriSign.AlreadyStarted.selector);
-        _startMeeting();
-    }
-
-    // ── test 3: submitConsensus seals the meeting ─────────────────────────────
-
-    function test_submitConsensus_success() public {
-        _startMeeting();
-        _submitConsensus();
-
-        (,, bytes32 storedRoot,, uint256 sealedAt,, bool isSealed) = trisign.getMeeting(MEETING_ID);
-        assertTrue(isSealed);
-        assertEq(storedRoot, FINAL_ROOT);
-        assertGt(sealedAt, 0);
-    }
-
-    // ── test 4: verifyMeeting returns true for correct root ───────────────────
+    // ── test 3: verifyMeeting returns true after sealing ─────────────────────
 
     function test_verifyMeeting_correctRoot() public {
-        _startMeeting();
-        _submitConsensus();
+        _submitAs(PK_A, addrA);
+        _submitAs(PK_B, addrB);
+        _submitAs(PK_C, addrC);
 
-        (bool isValid, address[3] memory signers) = trisign.verifyMeeting(MEETING_ID, FINAL_ROOT);
+        (bool isValid, address[3] memory signers, bool isSealed) =
+            trisign.verifyMeeting(MEETING_ID, FINAL_ROOT);
+
         assertTrue(isValid);
+        assertTrue(isSealed);
         assertEq(signers[0], addrA);
         assertEq(signers[1], addrB);
         assertEq(signers[2], addrC);
     }
 
-    // ── test 5: verifyMeeting returns false for tampered root ─────────────────
+    // ── test 4: verifyMeeting returns false for tampered root ─────────────────
 
     function test_verifyMeeting_wrongRoot() public {
-        _startMeeting();
-        _submitConsensus();
+        _submitAs(PK_A, addrA);
+        _submitAs(PK_B, addrB);
+        _submitAs(PK_C, addrC);
 
-        bytes32 tamperedRoot = keccak256("tampered");
-        (bool isValid,) = trisign.verifyMeeting(MEETING_ID, tamperedRoot);
+        (bool isValid,,) = trisign.verifyMeeting(MEETING_ID, keccak256("tampered"));
         assertFalse(isValid);
     }
 
-    // ── test 6: submitConsensus reverts on wrong signer ───────────────────────
+    // ── test 5: double-sign reverts ───────────────────────────────────────────
 
-    function test_submitConsensus_revert_signerMismatch() public {
-        _startMeeting();
+    function test_revert_doubleSigning() public {
+        _submitAs(PK_A, addrA);
 
-        // addrA signs for slot 0 but we put addrB's key in slot 0
-        bytes[3] memory sigs = [
-            _signConsensus(PK_B, MEETING_ID, FINAL_ROOT, DISPUTES_ROOT), // wrong: B signs A's slot
-            _signConsensus(PK_B, MEETING_ID, FINAL_ROOT, DISPUTES_ROOT),
-            _signConsensus(PK_C, MEETING_ID, FINAL_ROOT, DISPUTES_ROOT)
-        ];
-        vm.expectRevert(abi.encodeWithSelector(TriSign.SignerMismatch.selector, uint256(0)));
-        trisign.submitConsensus(MEETING_ID, FINAL_ROOT, DISPUTES_ROOT, sigs);
+        vm.prank(addrA);
+        vm.expectRevert(abi.encodeWithSelector(TriSign.AlreadySigned.selector, MEETING_ID, addrA));
+        trisign.submitConsensusSignature(
+            MEETING_ID,
+            [addrA, addrB, addrC],
+            FINAL_ROOT,
+            DISPUTES_ROOT,
+            _sign(PK_A, MEETING_ID, FINAL_ROOT, DISPUTES_ROOT)
+        );
     }
 
-    // ── test 7: submitConsensus reverts if called twice ───────────────────────
+    // ── test 6: non-participant reverts ───────────────────────────────────────
 
-    function test_submitConsensus_revert_alreadySealed() public {
-        _startMeeting();
-        _submitConsensus();
+    function test_revert_notParticipant() public {
+        uint256 outsiderPk = 0xDEAD;
+        address outsider = vm.addr(outsiderPk);
 
-        bytes[3] memory sigs = [
-            _signConsensus(PK_A, MEETING_ID, FINAL_ROOT, DISPUTES_ROOT),
-            _signConsensus(PK_B, MEETING_ID, FINAL_ROOT, DISPUTES_ROOT),
-            _signConsensus(PK_C, MEETING_ID, FINAL_ROOT, DISPUTES_ROOT)
-        ];
-        vm.expectRevert(TriSign.AlreadySealed.selector);
-        trisign.submitConsensus(MEETING_ID, FINAL_ROOT, DISPUTES_ROOT, sigs);
+        bytes memory sig = _sign(outsiderPk, MEETING_ID, FINAL_ROOT, DISPUTES_ROOT);
+
+        vm.prank(outsider);
+        vm.expectRevert(abi.encodeWithSelector(TriSign.NotParticipant.selector, MEETING_ID, outsider));
+        trisign.submitConsensusSignature(
+            MEETING_ID, [addrA, addrB, addrC], FINAL_ROOT, DISPUTES_ROOT, sig
+        );
     }
 
-    // ── test 8: submitConsensus reverts if meeting not started ────────────────
+    // ── test 7: submit after sealed reverts ───────────────────────────────────
 
-    function test_submitConsensus_revert_notStarted() public {
-        bytes[3] memory sigs = [
-            _signConsensus(PK_A, MEETING_ID, FINAL_ROOT, DISPUTES_ROOT),
-            _signConsensus(PK_B, MEETING_ID, FINAL_ROOT, DISPUTES_ROOT),
-            _signConsensus(PK_C, MEETING_ID, FINAL_ROOT, DISPUTES_ROOT)
-        ];
-        vm.expectRevert(TriSign.NotStarted.selector);
-        trisign.submitConsensus(MEETING_ID, FINAL_ROOT, DISPUTES_ROOT, sigs);
+    function test_revert_submitAfterSealed() public {
+        _submitAs(PK_A, addrA);
+        _submitAs(PK_B, addrB);
+        _submitAs(PK_C, addrC);
+
+        // any caller after sealed hits AlreadySealed
+        vm.prank(addrA);
+        vm.expectRevert(abi.encodeWithSelector(TriSign.AlreadySealed.selector, MEETING_ID));
+        trisign.submitConsensusSignature(
+            MEETING_ID,
+            [addrA, addrB, addrC],
+            FINAL_ROOT,
+            DISPUTES_ROOT,
+            _sign(PK_A, MEETING_ID, FINAL_ROOT, DISPUTES_ROOT)
+        );
+    }
+
+    // ── test 8: root mismatch reverts ─────────────────────────────────────────
+
+    function test_revert_rootMismatch() public {
+        // A signs with FINAL_ROOT
+        _submitAs(PK_A, addrA);
+
+        // B tries to sign with a different root
+        bytes32 differentRoot = keccak256("different-messages");
+        bytes memory sig = _sign(PK_B, MEETING_ID, differentRoot, DISPUTES_ROOT);
+
+        vm.prank(addrB);
+        vm.expectRevert(abi.encodeWithSelector(TriSign.RootMismatch.selector, MEETING_ID));
+        trisign.submitConsensusSignature(
+            MEETING_ID, [addrA, addrB, addrC], differentRoot, DISPUTES_ROOT, sig
+        );
     }
 }

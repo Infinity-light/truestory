@@ -1,5 +1,5 @@
 import { createClient } from '@supabase/supabase-js'
-import type { Meeting, Participant, MeetingStatus, ParticipantRole } from '@/types/meeting'
+import type { Meeting, Participant, MeetingStatus, ParticipantRole, Message } from '@/types/meeting'
 
 const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL!
 const supabaseAnonKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!
@@ -62,5 +62,33 @@ export function fromParticipant(row: ParticipantRow): Participant {
     endSig: row.end_sig,
     endSignedAt: row.end_signed_at,
     reviewCompleted: row.review_completed,
+  }
+}
+
+interface MessageRow {
+  id: string
+  meeting_id: string
+  speaker_address: string
+  original_text: string
+  final_text: string | null
+  spoken_at: string
+  server_received_at: string
+  original_hash: string
+  final_hash: string | null
+  is_disputed: boolean
+}
+
+export function fromMessage(row: MessageRow): Message {
+  return {
+    id: row.id,
+    meetingId: row.meeting_id,
+    speakerAddress: row.speaker_address,
+    originalText: row.original_text,
+    finalText: row.final_text,
+    spokenAt: row.spoken_at,
+    serverReceivedAt: row.server_received_at,
+    originalHash: row.original_hash,
+    finalHash: row.final_hash,
+    isDisputed: row.is_disputed,
   }
 }
