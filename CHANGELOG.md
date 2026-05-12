@@ -6,6 +6,9 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 ## [Unreleased]
 
 ### Added
+- 国际化（i18n）：内置中英双语切换，Header 右上角圆角按钮一键切换，选择持久化到 localStorage，刷新后保留。首次访问根据浏览器语言自动选 zh-CN 或 en。轻量级实现（React Context + useTranslation hook + 翻译表），首页完整覆盖，其他页面渐进接入。
+- 录音页发言人颜色：每个参与者在 Lobby 加入时随机分配色彩，录音瀑布流上的消息卡片左侧色点 + 左边框依此颜色着色，N 人会议同时发言也能视觉区分。
+- Supabase migration 运行器：`scripts/run-migration.py`，通过 Supabase Management API 远程执行 SQL，绕开国内直连 pooler 被 DNS 拦截的问题。未来 schema 变更不再需要手动去 Studio 粘 SQL。
 - 动态人数共识：2-10 人任意小组都能开会议，host 在 lobby 手动点"锁定 roster"那一刻冻结名单。
 - Pro 升级双轨：免费版走中心化数据库 + 链上指纹；Pro 版加 Arweave 永久加密存档 + Lit Protocol 解密 + soulbound 参会凭证 NFT。
 - Pro 月卡 NFT：5 MON / 30 天 soulbound 月卡，持卡期间所有创建的 Pro 会议零额外付费。
@@ -35,3 +38,8 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 ### Security
 - start sig 内容现在包含完整 participants 列表的 keccak 哈希，防止后期偷塞参与人。
 - 部分唯一索引 `meetings_active_code` 替代全表唯一约束，sealed 之后老 code 失效不可查。
+
+### Fixed
+- Vercel Hobby plan cron 限制：auto-advance 从每 10 分钟改为每天 03:00 UTC 一次（Hobby plan 限免每天 1 次）。
+- tsconfig target 升级到 ES2020 以支持 BigInt literal（合约金额常量需要）。
+- Supabase schema migration 0002 已应用到生产数据库（meetings + participants 新字段 + end_proposals 新表 + 部分唯一索引）。

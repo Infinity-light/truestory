@@ -2,27 +2,31 @@
 
 import { ConnectButton } from '@rainbow-me/rainbowkit'
 import { useRouter } from 'next/navigation'
+import { useTranslation } from '@/lib/i18n/provider'
+import { LangSwitch } from '@/components/LangSwitch'
 
 export default function HomePage() {
   const router = useRouter()
+  const { t } = useTranslation()
 
   return (
     <div className="min-h-screen bg-white flex flex-col">
       <header className="flex items-center justify-between px-6 py-4 border-b border-zinc-100">
         <span className="text-sm font-semibold tracking-tight text-zinc-900">trueStory</span>
-        <div className="flex items-center gap-4">
+        <div className="flex items-center gap-3">
           <button
             onClick={() => router.push('/my-meetings')}
             className="text-xs text-zinc-500 hover:text-zinc-900 transition-colors"
           >
-            我的会议
+            {t('header.myMeetings')}
           </button>
           <button
             onClick={() => router.push('/membership')}
             className="text-xs text-zinc-500 hover:text-zinc-900 transition-colors"
           >
-            Pro 月卡
+            {t('header.proMembership')}
           </button>
+          <LangSwitch />
           <ConnectButton />
         </div>
       </header>
@@ -31,11 +35,10 @@ export default function HomePage() {
         <div className="w-full max-w-sm space-y-8">
           <div className="space-y-2 text-center">
             <h1 className="text-2xl font-semibold tracking-tight text-zinc-900">
-              Trustless Meeting Records
+              {t('home.title')}
             </h1>
             <p className="text-sm text-zinc-500 leading-relaxed">
-              不需取信的会议记录，每句话、每条异议都由参与人共识签名上链。<br />
-              Multi-party consensus, cryptographically verifiable, no operator needed.
+              {t('home.subtitle')}
             </p>
           </div>
 
@@ -68,7 +71,7 @@ export default function HomePage() {
                     className="w-full h-11 rounded-lg bg-zinc-900 text-white text-sm font-medium
                                transition-colors hover:bg-zinc-700"
                   >
-                    新建会议 · New meeting
+                    {t('home.newMeeting')}
                   </button>
 
                   <button
@@ -76,18 +79,18 @@ export default function HomePage() {
                     className="w-full h-11 rounded-lg border border-zinc-200 bg-white text-zinc-900 text-sm font-medium
                                transition-colors hover:bg-zinc-50"
                   >
-                    加入会议 · Join meeting
+                    {t('home.joinMeeting')}
                   </button>
 
                   {!connected && (
                     <p className="text-center text-xs text-zinc-400">
-                      点击按钮自动唤起钱包连接 · Click any button to connect wallet
+                      {t('home.connectHint')}
                     </p>
                   )}
 
                   {wrongNetwork && (
                     <p className="text-center text-xs text-amber-600">
-                      请切换到 Monad Testnet · Please switch to Monad Testnet
+                      {t('home.wrongNetwork')}
                     </p>
                   )}
                 </div>
@@ -98,7 +101,7 @@ export default function HomePage() {
       </main>
 
       <footer className="px-6 py-4 text-center text-xs text-zinc-400">
-        trueStory · 合约 Contract:{' '}
+        trueStory · {t('home.footerContract')}:{' '}
         <a
           href="https://testnet.monadexplorer.com/address/0x38fBBF4a7fC309cD4b37F3eD055a16535f6193E2"
           target="_blank"
