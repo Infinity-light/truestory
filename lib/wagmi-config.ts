@@ -1,4 +1,14 @@
-import { getDefaultConfig } from '@rainbow-me/rainbowkit'
+import { connectorsForWallets } from '@rainbow-me/rainbowkit'
+import {
+  metaMaskWallet,
+  rabbyWallet,
+  okxWallet,
+  phantomWallet,
+  coinbaseWallet,
+  walletConnectWallet,
+  braveWallet,
+} from '@rainbow-me/rainbowkit/wallets'
+import { createConfig, http } from 'wagmi'
 import { defineChain } from 'viem'
 
 export const monadTestnet = defineChain({
@@ -14,11 +24,34 @@ export const monadTestnet = defineChain({
   testnet: true,
 })
 
-// Fallback prevents SSR crash when .env.local is not yet configured (Wave 0 dev).
-// Replace with a real WalletConnect projectId from cloud.walletconnect.com before deploying.
-export const wagmiConfig = getDefaultConfig({
-  appName: 'trueStory',
-  projectId: process.env.NEXT_PUBLIC_WC_PROJECT_ID || 'dev-placeholder-set-in-env-local',
+const projectId =
+  process.env.NEXT_PUBLIC_WC_PROJECT_ID || 'dev-placeholder-set-in-env-local'
+
+// Only wallets that can dynamically add chain 10143 via wallet_addEthereumChain
+// or have Monad Testnet preset. Rainbow is intentionally excluded — its mobile
+// app rejects the eip155:10143 namespace handshake ("No accounts found in
+// approved namespaces").
+const connectors = connectorsForWallets(
+  [
+    {
+      groupName: 'Monad-compatible',
+      wallets: [
+        metaMaskWallet,
+        rabbyWallet,
+        okxWallet,
+        phantomWallet,
+        coinbaseWallet,
+        walletConnectWallet,
+        braveWallet,
+      ],
+    },
+  ],
+  { appName: 'trueStory', projectId },
+)
+
+export const wagmiConfig = createConfig({
   chains: [monadTestnet],
+  connectors,
+  transports: { [monadTestnet.id]: http() },
   ssr: true,
 })
