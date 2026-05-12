@@ -28,7 +28,7 @@ export function SubmitChainButton({
   allSignatures,
 }: SubmitChainButtonProps) {
   const router = useRouter()
-  const { submitConsensus, data: txHash, isPending, isError, error } = useSubmitConsensus()
+  const { submitConsensus, hash: txHash, isPending, error } = useSubmitConsensus()
   const { isLoading: isConfirming, isSuccess } = useWaitForTransactionReceipt({ hash: txHash })
   const [submitted, setSubmitted] = useState(false)
 
@@ -46,10 +46,10 @@ export function SubmitChainButton({
   }, [isSuccess, txHash, submitted, roomCode, router])
 
   useEffect(() => {
-    if (isError && error) {
+    if (error) {
       toast.error('Transaction failed: ' + (error.message ?? 'unknown error'))
     }
-  }, [isError, error])
+  }, [error])
 
   function handleSubmit() {
     if (allSignatures.length < 3) {
