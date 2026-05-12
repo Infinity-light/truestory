@@ -30,7 +30,7 @@ function JoinForm() {
         const err = await res.json()
         const messages: Record<number, string> = {
           404: 'Meeting not found',
-          409: err.error === 'meeting full'
+          409: err.error === 'meeting_full'
             ? 'This meeting is full (3 participants max)'
             : 'Meeting is no longer accepting participants',
           410: 'This meeting has expired',

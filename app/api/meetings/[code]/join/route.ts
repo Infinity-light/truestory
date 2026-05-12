@@ -36,7 +36,7 @@ export async function POST(
   }
 
   if (meeting.status !== 'waiting') {
-    return Response.json({ error: 'meeting not accepting participants' }, { status: 409 })
+    return Response.json({ error: 'meeting_not_joinable' }, { status: 409 })
   }
 
   // Check current participant count
@@ -62,7 +62,7 @@ export async function POST(
   }
 
   if (existingParticipants.length >= 3) {
-    return Response.json({ error: 'meeting full' }, { status: 409 })
+    return Response.json({ error: 'meeting_full' }, { status: 409 })
   }
 
   // Insert new participant
@@ -82,7 +82,7 @@ export async function POST(
   await supabaseAdmin.channel(`meeting:${code}`).send({
     type: 'broadcast',
     event: 'participant_joined',
-    payload: { walletAddress },
+    payload: { walletAddress, role: 'participant', joinedAt: new Date().toISOString() },
   })
 
   // Return updated participant list

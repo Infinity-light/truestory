@@ -51,11 +51,11 @@ export async function POST(
       signature: signature as `0x${string}`,
     })
   } catch {
-    return Response.json({ error: 'invalid signature' }, { status: 400 })
+    return Response.json({ error: 'invalid_signature' }, { status: 400 })
   }
 
   if (!isValid) {
-    return Response.json({ error: 'invalid signature' }, { status: 400 })
+    return Response.json({ error: 'invalid_signature' }, { status: 400 })
   }
 
   // Fetch meeting
