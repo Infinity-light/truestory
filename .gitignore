@@ -1,0 +1,39 @@
+# Dependencies
+node_modules/
+.pnpm-store/
+
+# Build outputs
+.next/
+out/
+dist/
+build/
+
+# Foundry
+contracts/out/
+contracts/cache/
+contracts/broadcast/
+contracts/lib/forge-std
+
+# Env
+.env
+.env.local
+.env*.local
+!.env.example
+
+# IDE / OS
+.vscode/
+.idea/
+.DS_Store
+Thumbs.db
+*.swp
+
+# Logs
+*.log
+npm-debug.log*
+pnpm-debug.log*
+
+# Workflow worktrees (sprint isolation)
+.workflow/worktrees/
+
+# Workflow stash snapshot anchor (regenerated each run)
+.workflow/execution/stash-snapshot.txt
