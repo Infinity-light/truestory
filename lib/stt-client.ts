@@ -12,7 +12,6 @@ export interface StreamingSttOptions {
 }
 
 interface SttCredentials {
-  apiKey: string
   model: string
   wsEndpoint: string
 }
@@ -33,13 +32,10 @@ export class StreamingStt {
     this.credentials = await res.json() as SttCredentials
 
     return new Promise((resolve, reject) => {
-      const { apiKey, model, wsEndpoint } = this.credentials!
+      const { model, wsEndpoint } = this.credentials!
       this.taskId = crypto.randomUUID().replace(/-/g, '')
 
-      // DashScope WS auth: Authorization header via subprotocol trick.
-      // Browser WebSocket doesn't support custom headers, so we pass the token
-      // via the subprotocol field using the documented "bearer,<key>" format.
-      this.ws = new WebSocket(wsEndpoint, ['bearer', apiKey])
+      this.ws = new WebSocket(wsEndpoint)
       this.ws.binaryType = 'arraybuffer'
 
       this.ws.onopen = () => {
