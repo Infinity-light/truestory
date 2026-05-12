@@ -1,5 +1,5 @@
 import { NextRequest } from 'next/server'
-import { supabaseAdmin, fromMessage } from '@/lib/supabase'
+import { supabaseAdmin, fromMessage } from '@/lib/supabase-server'
 import { keccakMessage } from '@/lib/hash'
 import type { CreateMessageRequest, CreateMessageResponse } from '@/types/meeting'
 

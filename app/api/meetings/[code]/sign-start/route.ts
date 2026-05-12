@@ -1,6 +1,6 @@
 import { NextRequest } from 'next/server'
 import { verifyMessage } from 'viem'
-import { supabaseAdmin, fromParticipant } from '@/lib/supabase'
+import { supabaseAdmin, fromParticipant } from '@/lib/supabase-server'
 import type { SignStartRequest, SignStartResponse } from '@/types/meeting'
 
 // Expected message format: "TriSign Start: roomCode=XXXXXX ts=<unix_ms>"

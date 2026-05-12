@@ -1,6 +1,6 @@
 import { NextRequest } from 'next/server'
 import { verifyMessage, hexToBytes } from 'viem'
-import { supabaseAdmin } from '@/lib/supabase'
+import { supabaseAdmin } from '@/lib/supabase-server'
 
 // signedMessage is now a 32-byte keccak256 hex hash: "0x" + 64 hex chars
 const CONSENSUS_HASH_RE = /^0x[0-9a-fA-F]{64}$/

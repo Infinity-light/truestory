@@ -1,5 +1,5 @@
 import { NextRequest } from 'next/server'
-import { supabaseAdmin, fromMeeting, fromParticipant } from '@/lib/supabase'
+import { supabaseAdmin, fromMeeting, fromParticipant } from '@/lib/supabase-server'
 import type { GetMeetingResponse } from '@/types/meeting'
 
 // PATCH /api/meetings/[code] — host ends recording, meeting transitions to 'reviewing'

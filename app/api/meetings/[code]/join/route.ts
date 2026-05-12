@@ -1,5 +1,5 @@
 import { NextRequest } from 'next/server'
-import { supabaseAdmin, fromParticipant } from '@/lib/supabase'
+import { supabaseAdmin, fromParticipant } from '@/lib/supabase-server'
 import type { JoinMeetingRequest, JoinMeetingResponse } from '@/types/meeting'
 
 export async function POST(

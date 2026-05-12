@@ -1,5 +1,5 @@
 import { NextRequest } from 'next/server'
-import { supabaseAdmin, fromMeeting, fromParticipant } from '@/lib/supabase'
+import { supabaseAdmin, fromMeeting, fromParticipant } from '@/lib/supabase-server'
 import { keccakMessage, keccakMessagesRoot, keccakDisputesRoot } from '@/lib/hash'
 
 export async function GET(
