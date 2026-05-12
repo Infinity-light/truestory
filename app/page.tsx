@@ -86,7 +86,7 @@ export default function HomePage() {
       <footer className="px-6 py-4 text-center text-xs text-zinc-400">
         trueStory · 合约 Contract:{' '}
         <a
-          href="https://monadvision.com/address/0x89c3c56f0518c5aAA9E9Dd089f7eA725e1833EfD"
+          href="https://testnet.monadexplorer.com/address/0x89c3c56f0518c5aAA9E9Dd089f7eA725e1833EfD"
           target="_blank"
           rel="noopener noreferrer"
           className="font-mono hover:text-zinc-600"

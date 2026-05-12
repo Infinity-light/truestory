@@ -26,7 +26,7 @@ export function TxHashLink({ txHash }: TxHashLinkProps) {
       </span>
       <div className="flex items-center justify-between gap-3">
         <a
-          href={`https://monadvision.com/tx/${txHash}`}
+          href={`https://testnet.monadexplorer.com/tx/${txHash}`}
           target="_blank"
           rel="noopener noreferrer"
           className="font-mono text-sm text-zinc-700 hover:text-zinc-900 underline underline-offset-2 truncate"
