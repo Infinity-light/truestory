@@ -1,37 +1,45 @@
 'use client'
 
-import { useEffect, useRef, useState } from 'react'
+import { useEffect, useMemo, useRef, useState } from 'react'
 import { supabase } from '@/lib/supabase'
-import type { Message } from '@/types/meeting'
+import type { Message, Participant } from '@/types/meeting'
 import { MessageBubble } from './MessageBubble'
 
 interface MessagesWaterfallProps {
   roomCode: string
   myWallet: string
+  participants?: Participant[]
   initialMessages?: Message[]
 }
 
 export function MessagesWaterfall({
   roomCode,
   myWallet,
+  participants = [],
   initialMessages = [],
 }: MessagesWaterfallProps) {
   const [messages, setMessages] = useState<Message[]>(initialMessages)
   const bottomRef = useRef<HTMLDivElement>(null)
 
-  // Auto-scroll to bottom on new messages
+  // Build address → color map for fast lookup in bubble render
+  const colorMap = useMemo(() => {
+    const m = new Map<string, string>()
+    for (const p of participants) {
+      m.set(p.walletAddress.toLowerCase(), p.color)
+    }
+    return m
+  }, [participants])
+
   useEffect(() => {
     bottomRef.current?.scrollIntoView({ behavior: 'smooth' })
   }, [messages])
 
-  // Subscribe to Realtime broadcast for new messages
   useEffect(() => {
     const channel = supabase
       .channel(`meeting:${roomCode}:messages`)
       .on('broadcast', { event: 'message_created' }, ({ payload }) => {
         const msg = payload as Message
         setMessages((prev) => {
-          // Deduplicate: optimistic updates may have already added it
           if (prev.some((m) => m.id === msg.id)) return prev
           return [...prev, msg]
         })
@@ -64,6 +72,7 @@ export function MessagesWaterfall({
           key={msg.id}
           message={msg}
           isMine={msg.speakerAddress.toLowerCase() === myWallet.toLowerCase()}
+          speakerColor={colorMap.get(msg.speakerAddress.toLowerCase())}
         />
       ))}
       <div ref={bottomRef} />
@@ -71,5 +80,4 @@ export function MessagesWaterfall({
   )
 }
 
-// Expose addMessage for optimistic updates from RecordingPage
 export type { MessagesWaterfallProps }
