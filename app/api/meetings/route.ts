@@ -1,5 +1,5 @@
 import { NextRequest } from 'next/server'
-import { supabaseAdmin, fromMeeting, fromParticipant } from '@/lib/supabase'
+import { supabaseAdmin } from '@/lib/supabase'
 import type { CreateMeetingRequest, CreateMeetingResponse } from '@/types/meeting'
 
 function isValidAddress(addr: string): boolean {
@@ -67,8 +67,7 @@ export async function POST(request: NextRequest) {
     return Response.json({ error: 'failed to add host participant' }, { status: 500 })
   }
 
-  const appUrl = process.env.NEXT_PUBLIC_APP_URL || 'http://localhost:3000'
-  const joinUrl = `${appUrl}/meeting/join?code=${roomCode}`
+  const joinUrl = `${request.nextUrl.origin}/meeting/join?code=${roomCode}`
 
   const response: CreateMeetingResponse = {
     meetingId,
