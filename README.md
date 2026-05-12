@@ -1,29 +1,36 @@
-# TriSign
+This is a [Next.js](https://nextjs.org) project bootstrapped with [`create-next-app`](https://nextjs.org/docs/app/api-reference/cli/create-next-app).
 
-Three-party consensus meeting records on Monad — hackathon project.
+## Getting Started
 
-Three remote participants open their browsers, talk into their own mics, and watch each other's STT-transcribed words flow into a shared chat-style waterfall. After the meeting, each person reviews the full transcript: correcting their own mistranscribed lines, flagging others' statements they disagree with. Three wallet signatures later, the meeting record is sealed on Monad testnet — final message hashes + disputes mapping immutably attested. Anyone with the JSON file + tx hash can later verify nothing has been tampered with.
-
-Built in one day for the Monad hackathon. Stack: Next.js 14 + Tailwind + shadcn/ui · wagmi + RainbowKit · Supabase (Postgres + Realtime) · Alibaba Cloud DashScope STT (Qwen3-ASR-Flash-Realtime) · Foundry (Solidity 0.8.24) · Vercel.
-
-## Quick links
-
-- PRD: `.workflow/discovery/trisign-20260512-1150-PRD.md`
-- Project plan: `.workflow/planning/trisign-20260512-1208-项目规划.md`
-
-## Local dev
+First, run the development server:
 
 ```bash
-pnpm install
-cp .env.example .env.local  # fill in DASHSCOPE_API_KEY, SUPABASE_*, NEXT_PUBLIC_WC_PROJECT_ID
+npm run dev
+# or
+yarn dev
+# or
 pnpm dev
+# or
+bun dev
 ```
 
-Smart contract dev:
+Open [http://localhost:3000](http://localhost:3000) with your browser to see the result.
 
-```bash
-cd contracts
-forge install
-forge build
-forge test -vv
-```
+You can start editing the page by modifying `app/page.tsx`. The page auto-updates as you edit the file.
+
+This project uses [`next/font`](https://nextjs.org/docs/app/building-your-application/optimizing/fonts) to automatically optimize and load [Geist](https://vercel.com/font), a new font family for Vercel.
+
+## Learn More
+
+To learn more about Next.js, take a look at the following resources:
+
+- [Next.js Documentation](https://nextjs.org/docs) - learn about Next.js features and API.
+- [Learn Next.js](https://nextjs.org/learn) - an interactive Next.js tutorial.
+
+You can check out [the Next.js GitHub repository](https://github.com/vercel/next.js) - your feedback and contributions are welcome!
+
+## Deploy on Vercel
+
+The easiest way to deploy your Next.js app is to use the [Vercel Platform](https://vercel.com/new?utm_medium=default-template&filter=next.js&utm_source=create-next-app&utm_campaign=create-next-app-readme) from the creators of Next.js.
+
+Check out our [Next.js deployment documentation](https://nextjs.org/docs/app/building-your-application/deploying) for more details.
