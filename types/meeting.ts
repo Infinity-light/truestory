@@ -68,3 +68,27 @@ export interface GetMeetingResponse {
   meeting: Meeting
   participants: Participant[]
 }
+
+export interface Message {
+  id: string
+  meetingId: string
+  speakerAddress: string
+  originalText: string
+  finalText: string | null
+  spokenAt: string
+  serverReceivedAt: string
+  originalHash: string
+  finalHash: string | null
+  isDisputed: boolean
+}
+
+export interface CreateMessageRequest {
+  meetingId: string
+  speakerAddress: string
+  originalText: string
+  spokenAt: string
+}
+
+export interface CreateMessageResponse {
+  message: Message
+}
