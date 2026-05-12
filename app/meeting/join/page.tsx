@@ -15,6 +15,7 @@ function JoinForm() {
 
   const [code, setCode] = useState(searchParams.get('code') ?? '')
   const [joining, setJoining] = useState(false)
+  const isProInvite = searchParams.get('pro') === '1'
 
   async function handleJoin() {
     if (!address || code.length !== 6) return
@@ -30,9 +31,12 @@ function JoinForm() {
         const err = await res.json()
         const messages: Record<number, string> = {
           404: 'Meeting not found',
-          409: err.error === 'meeting_full'
-            ? 'This meeting is full (3 participants max)'
-            : 'Meeting is no longer accepting participants',
+          409:
+            err.error === 'meeting_full'
+              ? 'This meeting is full (10 participants max)'
+              : err.error === 'meeting_locked'
+              ? 'Host has locked the roster, no new participants accepted'
+              : 'Meeting is no longer accepting participants',
           410: 'This meeting has expired',
         }
         toast.error(messages[res.status] ?? err.error ?? 'Failed to join meeting')
@@ -75,6 +79,20 @@ function JoinForm() {
             <h1 className="text-xl font-semibold tracking-tight text-zinc-900">Enter meeting code</h1>
             <p className="text-sm text-zinc-400">Ask the host for the 6-digit code</p>
           </div>
+
+          {isProInvite && (
+            <div className="rounded-lg border border-amber-200 bg-amber-50 p-4 text-xs text-amber-900 leading-relaxed">
+              <span className="font-semibold">Pro meeting · 永久加密存证</span>
+              <br />
+              这是一场 Pro 会议，整场内容将在结束后加密上传到 Arweave 永久存档，参与人凭钱包独立解密。
+              加入意味着同意该机制，不接受请勿加入。
+              <br />
+              <span className="opacity-70">
+                This meeting will be encrypted and permanently archived to Arweave. Each participant can
+                decrypt independently with their wallet. By joining you consent to this.
+              </span>
+            </div>
+          )}
 
           <input
             type="text"

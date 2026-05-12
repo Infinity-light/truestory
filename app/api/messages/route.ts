@@ -7,6 +7,47 @@ function isValidAddress(addr: string): boolean {
   return /^0x[0-9a-fA-F]{40}$/.test(addr)
 }
 
+// GET /api/messages?meeting_id=<uuid>&since=<message_id>
+// Returns messages for a meeting, optionally only those after the given message id.
+// Used by clients reconnecting after disconnection to backfill missed messages.
+export async function GET(request: NextRequest) {
+  const { searchParams } = request.nextUrl
+  const meetingId = searchParams.get('meeting_id')
+  const since = searchParams.get('since')
+
+  if (!meetingId) {
+    return Response.json({ error: 'missing meeting_id' }, { status: 400 })
+  }
+
+  let query = supabaseAdmin
+    .from('messages')
+    .select('*')
+    .eq('meeting_id', meetingId)
+    .order('spoken_at', { ascending: true })
+
+  if (since) {
+    // Fetch the spoken_at of the since-message to use as cursor
+    const { data: cursor } = await supabaseAdmin
+      .from('messages')
+      .select('spoken_at')
+      .eq('id', since)
+      .single()
+    if (cursor) {
+      query = query.gt('spoken_at', cursor.spoken_at)
+    }
+  }
+
+  const { data, error } = await query
+  if (error) {
+    return Response.json({ error: 'failed to fetch messages' }, { status: 500 })
+  }
+
+  return Response.json(
+    { messages: (data ?? []).map(fromMessage) },
+    { status: 200 }
+  )
+}
+
 export async function POST(request: NextRequest) {
   let body: Partial<CreateMessageRequest>
   try {

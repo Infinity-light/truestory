@@ -1,0 +1,6 @@
+# Foundry build outputs — regenerated on every `forge build`
+out/
+cache/
+
+# Deploy broadcast logs — local artifacts, not part of source
+broadcast/

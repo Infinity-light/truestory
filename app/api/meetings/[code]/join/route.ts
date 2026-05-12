@@ -1,6 +1,7 @@
 import { NextRequest } from 'next/server'
-import { supabaseAdmin, fromParticipant } from '@/lib/supabase-server'
+import { supabaseAdmin, fromParticipant, randomParticipantColor } from '@/lib/supabase-server'
 import type { JoinMeetingRequest, JoinMeetingResponse } from '@/types/meeting'
+import { MAX_PARTICIPANTS } from '@/lib/contracts'
 
 export async function POST(
   request: NextRequest,
@@ -20,11 +21,11 @@ export async function POST(
     return Response.json({ error: 'invalid walletAddress' }, { status: 400 })
   }
 
-  // Fetch meeting by room code
   const { data: meeting, error: meetingError } = await supabaseAdmin
     .from('meetings')
-    .select('id, status, expires_at')
+    .select('id, status, expires_at, expected_count')
     .eq('room_code', code)
+    .is('code_released_at', null)
     .single()
 
   if (meetingError || !meeting) {
@@ -39,7 +40,10 @@ export async function POST(
     return Response.json({ error: 'meeting_not_joinable' }, { status: 409 })
   }
 
-  // Check current participant count
+  if (meeting.expected_count != null) {
+    return Response.json({ error: 'meeting_locked' }, { status: 409 })
+  }
+
   const { data: existingParticipants, error: fetchError } = await supabaseAdmin
     .from('participants')
     .select('*')
@@ -49,7 +53,6 @@ export async function POST(
     return Response.json({ error: 'failed to fetch participants' }, { status: 500 })
   }
 
-  // Idempotent: already joined
   const alreadyJoined = existingParticipants.some(
     (p) => p.wallet_address === walletAddress
   )
@@ -61,31 +64,29 @@ export async function POST(
     return Response.json(response, { status: 200 })
   }
 
-  if (existingParticipants.length >= 3) {
+  if (existingParticipants.length >= MAX_PARTICIPANTS) {
     return Response.json({ error: 'meeting_full' }, { status: 409 })
   }
 
-  // Insert new participant
   const { error: insertError } = await supabaseAdmin
     .from('participants')
     .insert({
       meeting_id: meeting.id,
       wallet_address: walletAddress,
       role: 'participant',
+      color: randomParticipantColor(),
     })
 
   if (insertError) {
     return Response.json({ error: 'failed to join meeting' }, { status: 500 })
   }
 
-  // Broadcast participant_joined via Supabase Realtime
   await supabaseAdmin.channel(`meeting:${code}`).send({
     type: 'broadcast',
     event: 'participant_joined',
     payload: { walletAddress, role: 'participant', joinedAt: new Date().toISOString() },
   })
 
-  // Return updated participant list
   const { data: updatedParticipants } = await supabaseAdmin
     .from('participants')
     .select('*')
