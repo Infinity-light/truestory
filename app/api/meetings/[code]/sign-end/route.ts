@@ -2,7 +2,7 @@ import { NextRequest } from 'next/server'
 import { verifyMessage, hexToBytes } from 'viem'
 import { supabaseAdmin } from '@/lib/supabase-server'
 
-// signedMessage is now a 32-byte keccak256 hex hash: "0x" + 64 hex chars
+// signedMessage is a 32-byte keccak256 hex hash: "0x" + 64 hex chars
 const CONSENSUS_HASH_RE = /^0x[0-9a-fA-F]{64}$/
 
 export async function POST(
@@ -44,8 +44,9 @@ export async function POST(
 
   const { data: meeting, error: meetingError } = await supabaseAdmin
     .from('meetings')
-    .select('id, status')
+    .select('id, status, expected_count')
     .eq('room_code', code)
+    .is('code_released_at', null)
     .single()
 
   if (meetingError || !meeting) {
@@ -82,17 +83,25 @@ export async function POST(
     .eq('meeting_id', meeting.id)
 
   const signedCount = (allParticipants ?? []).filter((p) => p.end_sig !== null).length
+  const totalCount = (allParticipants ?? []).length
+  const expectedCount = meeting.expected_count ?? totalCount
 
-  if (signedCount === 3) {
+  if (signedCount === expectedCount) {
+    // All end-signed → mark sealed and release the room code so a new meeting can reuse it
+    const sealedAt = new Date().toISOString()
     await supabaseAdmin
       .from('meetings')
-      .update({ status: 'sealed', recording_ended_at: new Date().toISOString() })
+      .update({
+        status: 'sealed',
+        recording_ended_at: sealedAt,
+        code_released_at: sealedAt,
+      })
       .eq('id', meeting.id)
 
     await supabaseAdmin.channel(`meeting:${code}`).send({
       type: 'broadcast',
       event: 'all_signed',
-      payload: { sealedAt: new Date().toISOString() },
+      payload: { sealedAt },
     })
 
     const allSignatures = (allParticipants ?? [])

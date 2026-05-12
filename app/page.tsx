@@ -10,18 +10,32 @@ export default function HomePage() {
     <div className="min-h-screen bg-white flex flex-col">
       <header className="flex items-center justify-between px-6 py-4 border-b border-zinc-100">
         <span className="text-sm font-semibold tracking-tight text-zinc-900">trueStory</span>
-        <ConnectButton />
+        <div className="flex items-center gap-4">
+          <button
+            onClick={() => router.push('/my-meetings')}
+            className="text-xs text-zinc-500 hover:text-zinc-900 transition-colors"
+          >
+            我的会议
+          </button>
+          <button
+            onClick={() => router.push('/membership')}
+            className="text-xs text-zinc-500 hover:text-zinc-900 transition-colors"
+          >
+            Pro 月卡
+          </button>
+          <ConnectButton />
+        </div>
       </header>
 
       <main className="flex flex-1 flex-col items-center justify-center px-6">
         <div className="w-full max-w-sm space-y-8">
           <div className="space-y-2 text-center">
             <h1 className="text-2xl font-semibold tracking-tight text-zinc-900">
-              三方共识 · Three-party consensus
+              Trustless Meeting Records
             </h1>
             <p className="text-sm text-zinc-500 leading-relaxed">
-              用区块链签名记录会议，每句话、每条异议都上链不可篡改。<br />
-              Tamper-proof meeting records — every word, every dispute, on-chain.
+              不需取信的会议记录，每句话、每条异议都由参与人共识签名上链。<br />
+              Multi-party consensus, cryptographically verifiable, no operator needed.
             </p>
           </div>
 
@@ -86,12 +100,12 @@ export default function HomePage() {
       <footer className="px-6 py-4 text-center text-xs text-zinc-400">
         trueStory · 合约 Contract:{' '}
         <a
-          href="https://testnet.monadexplorer.com/address/0x89c3c56f0518c5aAA9E9Dd089f7eA725e1833EfD"
+          href="https://testnet.monadexplorer.com/address/0x38fBBF4a7fC309cD4b37F3eD055a16535f6193E2"
           target="_blank"
           rel="noopener noreferrer"
           className="font-mono hover:text-zinc-600"
         >
-          0x89c3c5…1833EfD
+          0x38fBBF…6193E2
         </a>
         {' · '}Monad Testnet
       </footer>

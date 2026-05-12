@@ -1,12 +1,21 @@
 import { NextRequest } from 'next/server'
-import { verifyMessage } from 'viem'
-import { supabaseAdmin, fromParticipant } from '@/lib/supabase-server'
+import { verifyMessage, keccak256, encodePacked } from 'viem'
+import { supabaseAdmin } from '@/lib/supabase-server'
 import type { SignStartRequest, SignStartResponse } from '@/types/meeting'
 
-// Expected message format: "TriSign Start: roomCode=XXXXXX ts=<unix_ms>"
-const SIGNED_MESSAGE_RE = /^TriSign Start: roomCode=(\d{6}) ts=(\d+)$/
+// New format: "trueStory Start: meetingId=<bytes32> participantsHash=<bytes32> ts=<unix_ms>"
+const SIGNED_MESSAGE_RE =
+  /^trueStory Start: meetingId=(0x[0-9a-fA-F]{64}) participantsHash=(0x[0-9a-fA-F]{64}) ts=(\d+)$/
 
 const FIVE_MINUTES_MS = 5 * 60 * 1000
+
+function buildMeetingIdBytes32(uuid: string): `0x${string}` {
+  return keccak256(encodePacked(['string'], [uuid]))
+}
+
+function buildParticipantsHash(addrs: `0x${string}`[]): `0x${string}` {
+  return keccak256(encodePacked(addrs.map(() => 'address' as const), addrs))
+}
 
 export async function POST(
   request: NextRequest,
@@ -26,23 +35,17 @@ export async function POST(
     return Response.json({ error: 'missing required fields' }, { status: 400 })
   }
 
-  // Validate signed message format
   const match = SIGNED_MESSAGE_RE.exec(signedMessage)
   if (!match) {
     return Response.json({ error: 'invalid signed message format' }, { status: 400 })
   }
 
-  const [, msgRoomCode, msgTsStr] = match
-  if (msgRoomCode !== code) {
-    return Response.json({ error: 'room code mismatch in signed message' }, { status: 400 })
-  }
-
+  const [, msgMeetingId, msgParticipantsHash, msgTsStr] = match
   const msgTs = Number(msgTsStr)
   if (Math.abs(Date.now() - msgTs) > FIVE_MINUTES_MS) {
     return Response.json({ error: 'signature expired' }, { status: 400 })
   }
 
-  // Verify signature using viem
   let isValid = false
   try {
     isValid = await verifyMessage({
@@ -58,18 +61,43 @@ export async function POST(
     return Response.json({ error: 'invalid_signature' }, { status: 400 })
   }
 
-  // Fetch meeting
   const { data: meeting, error: meetingError } = await supabaseAdmin
     .from('meetings')
-    .select('id, status')
+    .select('id, status, expected_count')
     .eq('room_code', code)
+    .is('code_released_at', null)
     .single()
 
   if (meetingError || !meeting) {
     return Response.json({ error: 'meeting not found' }, { status: 404 })
   }
 
-  // Check participant exists in this meeting
+  if (meeting.expected_count == null) {
+    return Response.json({ error: 'roster not locked yet' }, { status: 409 })
+  }
+
+  const expectedMeetingId = buildMeetingIdBytes32(meeting.id)
+  if (msgMeetingId.toLowerCase() !== expectedMeetingId.toLowerCase()) {
+    return Response.json({ error: 'meetingId mismatch in signature' }, { status: 400 })
+  }
+
+  const { data: participantRows } = await supabaseAdmin
+    .from('participants')
+    .select('wallet_address')
+    .eq('meeting_id', meeting.id)
+    .order('joined_at', { ascending: true })
+
+  const participantList = (participantRows ?? []).map(
+    (p) => p.wallet_address as `0x${string}`
+  )
+  const expectedParticipantsHash = buildParticipantsHash(participantList)
+  if (msgParticipantsHash.toLowerCase() !== expectedParticipantsHash.toLowerCase()) {
+    return Response.json(
+      { error: 'participants list mismatch in signature' },
+      { status: 400 }
+    )
+  }
+
   const { data: participant, error: participantError } = await supabaseAdmin
     .from('participants')
     .select('*')
@@ -81,7 +109,6 @@ export async function POST(
     return Response.json({ error: 'participant not found' }, { status: 404 })
   }
 
-  // Update participant's start signature
   const { error: updateError } = await supabaseAdmin
     .from('participants')
     .update({
@@ -95,7 +122,6 @@ export async function POST(
     return Response.json({ error: 'failed to save signature' }, { status: 500 })
   }
 
-  // Check if all 3 participants have signed
   const { data: allParticipants } = await supabaseAdmin
     .from('participants')
     .select('*')
@@ -103,9 +129,9 @@ export async function POST(
 
   const signedCount = (allParticipants ?? []).filter((p) => p.start_sig !== null).length
   const totalCount = (allParticipants ?? []).length
+  const expectedCount = meeting.expected_count
 
-  if (totalCount === 3 && signedCount === 3) {
-    // All signed — transition to recording
+  if (totalCount === expectedCount && signedCount === expectedCount) {
     const recordingStartedAt = new Date().toISOString()
     await supabaseAdmin
       .from('meetings')
@@ -122,7 +148,6 @@ export async function POST(
     return Response.json(response, { status: 200 })
   }
 
-  // Partial sign — broadcast and return waiting list
   await supabaseAdmin.channel(`meeting:${code}`).send({
     type: 'broadcast',
     event: 'participant_signed_start',

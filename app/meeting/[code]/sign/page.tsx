@@ -104,20 +104,17 @@ export default function SignPage() {
   const me = summary.participants.find((p) => p.address.toLowerCase() === myAddress)
   const hasSigned = me?.hasEndSigned ?? false
   const allSigned =
-    summary.participants.length === 3 && summary.participants.every((p) => p.hasEndSigned)
+    summary.participants.length >= 2 &&
+    summary.participants.every((p) => p.hasEndSigned)
 
   const myMessageCount = summary.messages.filter(
     (m) => m.speaker.toLowerCase() === myAddress
   ).length
 
-  // Build sorted participants tuple for on-chain call (must be exactly 3)
+  // Build participants array for on-chain call (dynamic length 2-10)
   const participantsTuple =
-    summary.participants.length === 3
-      ? (summary.participants.map((p) => p.address) as [
-          `0x${string}`,
-          `0x${string}`,
-          `0x${string}`,
-        ])
+    summary.participants.length >= 2
+      ? (summary.participants.map((p) => p.address) as `0x${string}`[])
       : null
 
   // Resolve my signature — prefer local state (from this session), fall back to DB value

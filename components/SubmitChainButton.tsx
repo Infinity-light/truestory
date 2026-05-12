@@ -8,7 +8,7 @@ import { useSubmitConsensusSignature, buildMeetingId } from '@/lib/contract-writ
 interface SubmitChainButtonProps {
   roomCode: string
   meetingId: string
-  participants: [`0x${string}`, `0x${string}`, `0x${string}`]
+  participants: readonly `0x${string}`[]
   finalMessagesRoot: `0x${string}`
   disputesRoot: `0x${string}`
   mySignature: `0x${string}`

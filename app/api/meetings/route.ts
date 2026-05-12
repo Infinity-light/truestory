@@ -1,5 +1,5 @@
 import { NextRequest } from 'next/server'
-import { supabaseAdmin } from '@/lib/supabase-server'
+import { supabaseAdmin, randomParticipantColor } from '@/lib/supabase-server'
 import type { CreateMeetingRequest, CreateMeetingResponse } from '@/types/meeting'
 
 function isValidAddress(addr: string): boolean {
@@ -11,31 +11,41 @@ function generateRoomCode(): string {
 }
 
 export async function POST(request: NextRequest) {
-  let body: Partial<CreateMeetingRequest>
+  let body: Partial<CreateMeetingRequest & { clientMeetingId?: string }>
   try {
     body = await request.json()
   } catch {
     return Response.json({ error: 'invalid request body' }, { status: 400 })
   }
 
-  const { hostAddress } = body
+  const { hostAddress, isPro, skipAttestation, clientMeetingId } = body
   if (!hostAddress || !isValidAddress(hostAddress)) {
     return Response.json({ error: 'invalid hostAddress' }, { status: 400 })
   }
 
-  // Generate unique room code — retry up to 5 times on conflict
+  // Generate unique room code — partial index lets us reuse codes after sealed,
+  // so we only collide with currently active meetings.
   let roomCode = ''
-  let meetingId = ''
+  let meetingId = clientMeetingId || ''
+
   for (let attempt = 0; attempt < 5; attempt++) {
     roomCode = generateRoomCode()
 
+    const insertPayload: Record<string, unknown> = {
+      room_code: roomCode,
+      host_address: hostAddress,
+      status: 'waiting',
+      is_pro: Boolean(isPro),
+      skip_attestation: Boolean(skipAttestation),
+      pro_status: isPro ? 'paid' : 'none',
+    }
+    if (clientMeetingId) {
+      insertPayload.id = clientMeetingId
+    }
+
     const { data, error } = await supabaseAdmin
       .from('meetings')
-      .insert({
-        room_code: roomCode,
-        host_address: hostAddress,
-        status: 'waiting',
-      })
+      .insert(insertPayload)
       .select()
       .single()
 
@@ -44,7 +54,6 @@ export async function POST(request: NextRequest) {
       break
     }
 
-    // 23505 = unique_violation in Postgres
     if (error?.code !== '23505') {
       return Response.json({ error: 'failed to create meeting' }, { status: 500 })
     }
@@ -54,13 +63,13 @@ export async function POST(request: NextRequest) {
     return Response.json({ error: 'failed to generate unique room code' }, { status: 500 })
   }
 
-  // Insert host as first participant
   const { error: participantError } = await supabaseAdmin
     .from('participants')
     .insert({
       meeting_id: meetingId,
       wallet_address: hostAddress,
       role: 'host',
+      color: randomParticipantColor(),
     })
 
   if (participantError) {
@@ -73,6 +82,7 @@ export async function POST(request: NextRequest) {
     meetingId,
     roomCode,
     joinUrl,
+    isPro: Boolean(isPro),
   }
 
   return Response.json(response, { status: 201 })
