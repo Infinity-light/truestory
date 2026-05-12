@@ -8,6 +8,7 @@ import { supabase } from '@/lib/supabase'
 import { MeetingSummaryCard } from '@/components/MeetingSummaryCard'
 import { SigningStatusGrid } from '@/components/SigningStatusGrid'
 import { SignButton } from '@/components/SignButton'
+import { SubmitChainButton } from '@/components/SubmitChainButton'
 
 interface SummaryParticipant {
   address: string
@@ -151,19 +152,18 @@ export default function SignPage() {
           )}
 
           {allSigned && address && (
-            <SubmitChainButtonPlaceholder />
+            <SubmitChainButton
+              roomCode={code}
+              meetingId={summary.meeting.id}
+              finalMessagesRoot={summary.finalMessagesRoot}
+              disputesRoot={summary.disputesRoot}
+              allSignatures={summary.participants
+                .filter((p) => p.hasEndSigned && p.endSig)
+                .map((p) => ({ addr: p.address, sig: p.endSig!, signedAt: '' }))}
+            />
           )}
         </div>
       </main>
-    </div>
-  )
-}
-
-// Placeholder — SubmitChainButton is built in T4.9
-function SubmitChainButtonPlaceholder() {
-  return (
-    <div className="w-full h-11 rounded-lg bg-zinc-200 flex items-center justify-center">
-      <span className="text-sm text-zinc-400">Loading chain button...</span>
     </div>
   )
 }
