@@ -1,36 +1,25 @@
-This is a [Next.js](https://nextjs.org) project bootstrapped with [`create-next-app`](https://nextjs.org/docs/app/api-reference/cli/create-next-app).
+# trueStory
 
-## Getting Started
+三方共识会议记录，链上签字防篡改。Three-party consensus meeting records, signed on-chain, tamper-proof.
 
-First, run the development server:
+三个远程参与者各自打开浏览器，对着自己的麦克风讲话，看着对方的话被实时 STT 转写成文字流。会议结束后，每人在自己的钱包中签字确认这就是说过的话。三个钱包签名上链 Monad Testnet 后，任何人未来都能链上验证这份会议纪要没有被改过——每个字、每条异议都不可篡改。
 
-```bash
-npm run dev
-# or
-yarn dev
-# or
-pnpm dev
-# or
-bun dev
-```
+Three remote participants each open their browser, speak into their own mic, and watch each other's words flow into a shared chat-style real-time transcription stream. After the meeting, each person signs in their wallet to confirm "this is what I said". Three wallet signatures hit Monad Testnet, and anyone with the JSON record + tx hash can later verify on-chain that no word was tampered with.
 
-Open [http://localhost:3000](http://localhost:3000) with your browser to see the result.
+## Tech Stack 技术栈
 
-You can start editing the page by modifying `app/page.tsx`. The page auto-updates as you edit the file.
+- **Frontend**: Next.js 16 (App Router) · Tailwind v4 · shadcn/ui
+- **Wallet**: wagmi v2 + RainbowKit (Reown WalletConnect)
+- **Backend**: Supabase (Postgres + Realtime)
+- **STT**: Alibaba Cloud DashScope Realtime ASR (qwen3-asr-flash-realtime via WebSocket)
+- **Smart Contract**: Solidity 0.8.24 deployed on Monad Testnet (chain id 10143)
+- **Deployment**: Vercel
 
-This project uses [`next/font`](https://nextjs.org/docs/app/building-your-application/optimizing/fonts) to automatically optimize and load [Geist](https://vercel.com/font), a new font family for Vercel.
+## Contract 合约
 
-## Learn More
+Monad Testnet (chain id 10143): [`0x89c3c56f0518c5aAA9E9Dd089f7eA725e1833EfD`](https://monadvision.com/address/0x89c3c56f0518c5aAA9E9Dd089f7eA725e1833EfD)
 
-To learn more about Next.js, take a look at the following resources:
+## Project Docs 项目文档
 
-- [Next.js Documentation](https://nextjs.org/docs) - learn about Next.js features and API.
-- [Learn Next.js](https://nextjs.org/learn) - an interactive Next.js tutorial.
-
-You can check out [the Next.js GitHub repository](https://github.com/vercel/next.js) - your feedback and contributions are welcome!
-
-## Deploy on Vercel
-
-The easiest way to deploy your Next.js app is to use the [Vercel Platform](https://vercel.com/new?utm_medium=default-template&filter=next.js&utm_source=create-next-app&utm_campaign=create-next-app-readme) from the creators of Next.js.
-
-Check out our [Next.js deployment documentation](https://nextjs.org/docs/app/building-your-application/deploying) for more details.
+- PRD: `.workflow/discovery/trisign-20260512-1150-PRD.md`
+- Project plan: `.workflow/planning/trisign-20260512-1208-项目规划.md`

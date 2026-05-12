@@ -9,7 +9,7 @@ export default function HomePage() {
   return (
     <div className="min-h-screen bg-white flex flex-col">
       <header className="flex items-center justify-between px-6 py-4 border-b border-zinc-100">
-        <span className="text-sm font-semibold tracking-tight text-zinc-900">TriSign</span>
+        <span className="text-sm font-semibold tracking-tight text-zinc-900">trueStory</span>
         <ConnectButton />
       </header>
 
@@ -84,7 +84,7 @@ export default function HomePage() {
       </main>
 
       <footer className="px-6 py-4 text-center text-xs text-zinc-400">
-        合约 · Contract:{' '}
+        trueStory · 合约 Contract:{' '}
         <a
           href="https://monadvision.com/address/0x89c3c56f0518c5aAA9E9Dd089f7eA725e1833EfD"
           target="_blank"
