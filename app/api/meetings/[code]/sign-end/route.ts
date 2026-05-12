@@ -1,12 +1,9 @@
 import { NextRequest } from 'next/server'
-import { verifyMessage } from 'viem'
+import { verifyMessage, hexToBytes } from 'viem'
 import { supabaseAdmin } from '@/lib/supabase'
 
-// "TriSign End: roomCode=XXXXXX finalRoot=0x... disputesRoot=0x... ts=<num>"
-const SIGNED_MESSAGE_RE =
-  /^TriSign End: roomCode=(\d{6}) finalRoot=(0x[0-9a-fA-F]{64}) disputesRoot=(0x[0-9a-fA-F]{64}) ts=(\d+)$/
-
-const FIVE_MINUTES_MS = 5 * 60 * 1000
+// signedMessage is now a 32-byte keccak256 hex hash: "0x" + 64 hex chars
+const CONSENSUS_HASH_RE = /^0x[0-9a-fA-F]{64}$/
 
 export async function POST(
   request: NextRequest,
@@ -26,26 +23,15 @@ export async function POST(
     return Response.json({ error: 'missing required fields' }, { status: 400 })
   }
 
-  const match = SIGNED_MESSAGE_RE.exec(signedMessage)
-  if (!match) {
+  if (!CONSENSUS_HASH_RE.test(signedMessage)) {
     return Response.json({ error: 'invalid signed message format' }, { status: 400 })
-  }
-
-  const [, msgRoomCode, , , msgTsStr] = match
-  if (msgRoomCode !== code) {
-    return Response.json({ error: 'room code mismatch in signed message' }, { status: 400 })
-  }
-
-  const msgTs = Number(msgTsStr)
-  if (Math.abs(Date.now() - msgTs) > FIVE_MINUTES_MS) {
-    return Response.json({ error: 'signature expired' }, { status: 400 })
   }
 
   let isValid = false
   try {
     isValid = await verifyMessage({
       address: walletAddress as `0x${string}`,
-      message: signedMessage,
+      message: { raw: hexToBytes(signedMessage as `0x${string}`) },
       signature: signature as `0x${string}`,
     })
   } catch {

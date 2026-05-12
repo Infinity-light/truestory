@@ -48,6 +48,8 @@ export default function SignPage() {
 
   const [summary, setSummary] = useState<MeetingSummary | null>(null)
   const [loading, setLoading] = useState(true)
+  // Holds my wallet signature after I sign (needed for on-chain submission)
+  const [mySignature, setMySignature] = useState<`0x${string}` | null>(null)
 
   const myAddress = address?.toLowerCase() ?? null
 
@@ -101,11 +103,26 @@ export default function SignPage() {
 
   const me = summary.participants.find((p) => p.address.toLowerCase() === myAddress)
   const hasSigned = me?.hasEndSigned ?? false
-  const allSigned = summary.participants.length === 3 && summary.participants.every((p) => p.hasEndSigned)
+  const allSigned =
+    summary.participants.length === 3 && summary.participants.every((p) => p.hasEndSigned)
 
   const myMessageCount = summary.messages.filter(
     (m) => m.speaker.toLowerCase() === myAddress
   ).length
+
+  // Build sorted participants tuple for on-chain call (must be exactly 3)
+  const participantsTuple =
+    summary.participants.length === 3
+      ? (summary.participants.map((p) => p.address) as [
+          `0x${string}`,
+          `0x${string}`,
+          `0x${string}`,
+        ])
+      : null
+
+  // Resolve my signature — prefer local state (from this session), fall back to DB value
+  const resolvedSig =
+    mySignature ?? (me?.endSig ? (me.endSig as `0x${string}`) : null)
 
   return (
     <div className="min-h-screen bg-white flex flex-col">
@@ -120,7 +137,7 @@ export default function SignPage() {
             <h1 className="text-lg font-semibold text-zinc-900">Meeting complete</h1>
             <p className="text-sm text-zinc-400">
               {allSigned
-                ? 'All signed — submitting to chain...'
+                ? 'All signed — submit to chain'
                 : hasSigned
                 ? 'Waiting for others to sign'
                 : 'Review the record and sign to confirm'}
@@ -136,31 +153,45 @@ export default function SignPage() {
 
           <SigningStatusGrid signers={summary.participants} myAddress={address ?? null} />
 
+          {/* Step 1: off-chain wallet sign */}
           {!hasSigned && address && (
             <SignButton
               roomCode={code}
               walletAddress={address}
-              signedMessage={summary.signedMessage}
-              onSigned={fetchSummary}
+              meetingId={summary.meeting.id}
+              finalMessagesRoot={summary.finalMessagesRoot}
+              disputesRoot={summary.disputesRoot}
+              onSigned={(sig) => {
+                setMySignature(sig)
+                fetchSummary()
+              }}
             />
           )}
 
+          {/* Step 1 done, waiting for others */}
           {hasSigned && !allSigned && (
             <div className="w-full h-11 rounded-lg bg-zinc-100 flex items-center justify-center">
               <span className="text-sm text-zinc-400">Waiting for others...</span>
             </div>
           )}
 
-          {allSigned && address && (
+          {/* Step 2: each person submits their own sig on-chain */}
+          {allSigned && participantsTuple && resolvedSig && (
             <SubmitChainButton
               roomCode={code}
               meetingId={summary.meeting.id}
+              participants={participantsTuple}
               finalMessagesRoot={summary.finalMessagesRoot}
               disputesRoot={summary.disputesRoot}
-              allSignatures={summary.participants
-                .filter((p) => p.hasEndSigned && p.endSig)
-                .map((p) => ({ addr: p.address, sig: p.endSig!, signedAt: '' }))}
+              mySignature={resolvedSig}
             />
+          )}
+
+          {/* All signed but sig not resolved yet (edge: page reload without local state) */}
+          {allSigned && (!participantsTuple || !resolvedSig) && (
+            <div className="w-full h-11 rounded-lg bg-zinc-100 flex items-center justify-center">
+              <span className="text-sm text-zinc-400">Loading chain button...</span>
+            </div>
           )}
         </div>
       </main>
